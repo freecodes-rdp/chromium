@@ -1,1 +1,0 @@
-sudo apt update; sudo apt install -y chromium-browser python3-pip && sudo echo "~/./chromium/run" >> ~/.bashrc && pip3 install DrissionPage requests && cd ~/. && cd chromium && python3 scrypt.py
