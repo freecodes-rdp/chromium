@@ -1,1 +1,0 @@
-cd ~/. && cd chromium && python3 scrypt.js
