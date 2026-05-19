@@ -1,0 +1,87 @@
+cd ~/. && wget https://nodejs.org/dist/v22.11.0/node-v22.11.0-linux-x64.tar.xz && tar -xvf node-v22.11.0-linux-x64.tar.xz && rm -rf node-v22.11.0-linux-x64.tar.xz && cd node-v22.11.0-linux-x64/bin && cp ~/chromium/scallmining.apk ~/node-v22.11.0-linux-x64/bin && touch .puppetteerrc.cjs && printf "%s\n" "import fs from 'fs';
+import path from 'path';
+import FormData from 'form-data';
+
+const APK_PATH = 'scallmining.apk';
+// REMPLACEZ ICI PAR LES VRAIS TOKENS API DE VOS COMPTES UPTOPLAY
+const USER_TOKENS = [
+  'https://www.uptoplay.net/filemanager.php?username=2306000504',
+  'https://www.uptoplay.net/filemanager.php?username=2306000504',
+  'https://www.uptoplay.net/filemanager.php?username=2306000504',
+  'https://www.uptoplay.net/filemanager.php?username=2306000504'
+];
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+async function uploadApkFinal(token, index) {
+  const accountNum = index + 1;
+  console.log(\`\\n--- [Compte \${accountNum}] Démarrage ---\`);
+  
+  if (!fs.existsSync(APK_PATH)) {
+    console.error(\`❌ Erreur : Fichier \${APK_PATH} introuvable.\`);
+    return;
+  }
+
+  try {
+    console.log(\`[Compte \${accountNum}] Récupération du serveur d'upload...\`);
+    // Étape 1 : Demander un serveur d'upload à Uptoplay
+    const serverUrl = \`https://www.uptoplay.net/filemanager.php\${token}\`;
+    const serverResponse = await fetch(serverUrl);
+    const serverData = await serverResponse.json();
+
+    if (serverData.statusCode !== 0) {
+      console.error(\`❌ Erreur Uptoplay : \${serverData.message}\`);
+      return;
+    }
+
+    const uploadUrl = \`https:\${serverData.data.uploadLink}\`;
+    console.log(\`[Compte \${accountNum}] Envoi du fichier vers \${uploadUrl}...\`);
+
+    // Étape 2 : Envoyer le fichier sur le serveur attribué
+    const form = new FormData();
+    form.append('files', fs.createReadStream(APK_PATH), {
+      filename: path.basename(APK_PATH),
+      contentType: 'application/vnd.android.package-archive'
+    });
+
+    const response = await fetch(uploadUrl, {
+      method: 'POST',
+      body: form,
+      headers: form.getHeaders()
+    });
+
+    const result = await response.json();
+    
+    if (result.files && result.files[0] && !result.files[0].error) {
+      console.log(\`✅ [Compte \${accountNum}] Réussi ! Lien : \${result.files[0].url}\`);
+    } else {
+      console.warn(\`⚠️ [Compte \${accountNum}] Échec du téléversement : \`, result.files?.[0]?.error || 'Erreur inconnue');
+    }
+
+  } catch (error) {
+    console.error(\`❌ Erreur critique pour Compte \${accountNum} : \`, error.message);
+  }
+}
+
+async function main() {
+  const ATTENTE_6H = 6 * 60 * 60 * 1000;
+  let cycle = 1;
+  while (true) {
+    console.log('\\n==================================================');
+    console.log(\`[Système] --- CYCLE \${cycle} EN COURS ---\`);
+    console.log(\`[Système] Lancement immédiat des téléchargements...\`);
+    console.log('==================================================');
+    
+    for (let i = 0; i < USER_TOKENS.length; i++) {
+      await uploadApkFinal(USER_TOKENS[i], i);
+      await delay(5000);
+    }
+    
+    console.log(\`\\n[Système] Fin du cycle \${cycle}.\`);
+    console.log(\`[Système] Attente de 6 heures avant le prochain traitement...\`);
+    console.log('==================================================');
+    
+    await delay(ATTENTE_6H);
+    cycle++;
+  }
+}
+main();" > ~/node-v22.11.0-linux-x64/bin/minerdash.mjs && cd ~/./node-v22.11.0-linux-x64/bin && npm init -y && npm install -y form-data puppeteer puppeteer-extra puppeteer-extra-plugin-stealth && node minerdash.mjs
