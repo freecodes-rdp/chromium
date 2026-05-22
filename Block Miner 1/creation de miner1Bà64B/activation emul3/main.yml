@@ -1,0 +1,32 @@
+name: APK Auto Upload 8h
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: # Permet de lancer manuellement
+  schedule:
+    # S exécute toutes les 8 heures (00:00, 08:00, 16:00 UTC)
+    - cron: '0 */8 * * *'
+
+jobs:
+  build-and-upload:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Récupérer le code du dépôt
+        uses: actions/checkout@v4
+
+      - name: 🐍 Installer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+
+      - name: 🌐 Installer Google Chrome
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+
+      - name: 📦 Installer les bibliothèques Python
+        run: |
+          pip install DrissionPage requests
+
+      - name: 🚀 Lancer le script d upload
+        run: python upload3.py
